@@ -195,6 +195,8 @@ export async function getParticipantData(accessCode: string) {
 }
 
 export async function updateWishes(participantId: string, wishes: string[]) {
+    const { sendWhatsAppMessage, checkEvolutionApiStatus } = await import('@/lib/evolution-api');
+
     // Delete existing wishes
     await supabase
         .from('wishes')
@@ -216,6 +218,60 @@ export async function updateWishes(participantId: string, wishes: string[]) {
             .insert(wishesToInsert);
 
         if (error) throw new Error('Failed to update wishes');
+    }
+
+    // Notify the person who drew this participant
+    try {
+        const isApiAvailable = await checkEvolutionApiStatus();
+        if (!isApiAvailable || wishesToInsert.length === 0) return;
+
+        // Get this participant's info and group
+        const { data: thisParticipant } = await supabase
+            .from('participants')
+            .select(`
+                name,
+                group_id,
+                group:groups (name)
+            `)
+            .eq('id', participantId)
+            .single();
+
+        if (!thisParticipant) return;
+
+        // Find who drew this participant (drawn_participant_id = this participant)
+        const { data: whoDrawMe } = await supabase
+            .from('participants')
+            .select('name, phone, access_code')
+            .eq('group_id', thisParticipant.group_id)
+            .eq('drawn_participant_id', participantId)
+            .single();
+
+        if (!whoDrawMe || !whoDrawMe.phone) return;
+
+        const groupName = Array.isArray(thisParticipant.group)
+            ? thisParticipant.group[0]?.name
+            : (thisParticipant.group as any)?.name || 'Amigo Secreto';
+
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+        const message = `🎁 Boa notícia, ${whoDrawMe.name}!
+
+${thisParticipant.name} acabou de atualizar a lista de desejos no Amigo Secreto "${groupName}"!
+
+Acesse o link para ver as sugestões:
+👉 ${baseUrl}/p/${whoDrawMe.access_code}
+
+Agora ficou mais fácil escolher o presente! 🎄`;
+
+        await sendWhatsAppMessage({
+            phone: whoDrawMe.phone,
+            message
+        });
+
+        console.log(`Wishlist notification sent to ${whoDrawMe.name} about ${thisParticipant.name}'s updated wishlist`);
+    } catch (error) {
+        // Don't fail the wish update if notification fails
+        console.error('Failed to send wishlist update notification:', error);
     }
 }
 
