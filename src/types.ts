@@ -4,6 +4,7 @@ export interface Group {
     name: string;
     suggested_value?: number;
     event_date?: string;
+    organizer_name?: string;
     organizer_phone?: string;
     is_drawn: boolean;
     created_at: string;
@@ -29,7 +30,8 @@ export interface CreateGroupInput {
     name: string;
     suggested_value?: string; // Input as string, convert to number
     event_date?: string;
-    organizer_phone?: string;
+    organizer_name: string;
+    organizer_phone: string;
 }
 
 export interface AddParticipantInput {

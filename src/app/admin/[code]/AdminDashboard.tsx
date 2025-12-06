@@ -12,6 +12,7 @@ interface Participant {
     phone: string;
     access_code: string;
     has_viewed_result: boolean;
+    has_wishlist?: boolean;
 }
 
 interface Group {
@@ -35,6 +36,7 @@ export default function AdminDashboard({ group }: Props) {
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
     const viewedCount = group.participants.filter(p => p.has_viewed_result).length;
+    const wishlistCount = group.participants.filter(p => p.has_wishlist).length;
     const totalCount = group.participants.length;
 
     const copyCode = (code: string, id: string) => {
@@ -113,8 +115,8 @@ export default function AdminDashboard({ group }: Props) {
 
             {notification && (
                 <div className={`mb-6 p-4 rounded-lg text-center ${notification.type === 'success'
-                        ? 'bg-green-100 text-green-700 border border-green-200'
-                        : 'bg-red-100 text-red-700 border border-red-200'
+                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    : 'bg-red-100 text-red-700 border border-red-200'
                     }`}>
                     {notification.message}
                 </div>
@@ -128,14 +130,18 @@ export default function AdminDashboard({ group }: Props) {
                     </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-3xl font-bold text-primary">{totalCount}</p>
                         <p className="text-sm text-text-muted">Participantes</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-3xl font-bold text-secondary">{viewedCount}/{totalCount}</p>
-                        <p className="text-sm text-text-muted">Já viram o resultado</p>
+                        <p className="text-sm text-text-muted">Viram o resultado</p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-3xl font-bold text-blue-600">{wishlistCount}/{totalCount}</p>
+                        <p className="text-sm text-text-muted">Lista de desejos</p>
                     </div>
                 </div>
             </Card>
@@ -167,6 +173,11 @@ export default function AdminDashboard({ group }: Props) {
                                     {p.has_viewed_result && (
                                         <span className="text-xs bg-green-200 text-green-700 px-2 py-0.5 rounded-full">
                                             Visualizado ✓
+                                        </span>
+                                    )}
+                                    {p.has_wishlist && (
+                                        <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded-full">
+                                            Lista 🎁
                                         </span>
                                     )}
                                 </div>

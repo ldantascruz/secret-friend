@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -19,17 +19,62 @@ export default function CreateGroupForm() {
         name: '',
         suggested_value: '',
         event_date: '',
+        organizer_name: '',
         organizer_phone: ''
     });
     const [createdGroup, setCreatedGroup] = useState<Group | null>(null);
 
     // Step 2 Data
+    const [organizerParticipates, setOrganizerParticipates] = useState(true);
     const [participants, setParticipants] = useState<AddParticipantInput[]>([]);
     const [newParticipant, setNewParticipant] = useState<AddParticipantInput>({ name: '', phone: '' });
     const [participantError, setParticipantError] = useState('');
 
+    // Add organizer as first participant when entering step 2
+    useEffect(() => {
+        if (step === 2 && organizerParticipates && participants.length === 0) {
+            setParticipants([{
+                name: groupData.organizer_name,
+                phone: groupData.organizer_phone
+            }]);
+        }
+    }, [step]);
+
+    // Handle organizer participation toggle
+    const handleOrganizerParticipateToggle = (checked: boolean) => {
+        setOrganizerParticipates(checked);
+        if (checked) {
+            // Add organizer as first participant if not already there
+            const isOrganizerInList = participants.some(
+                p => p.phone === groupData.organizer_phone
+            );
+            if (!isOrganizerInList) {
+                setParticipants([{
+                    name: groupData.organizer_name,
+                    phone: groupData.organizer_phone
+                }, ...participants]);
+            }
+        } else {
+            // Remove organizer from list
+            setParticipants(participants.filter(
+                p => p.phone !== groupData.organizer_phone
+            ));
+        }
+    };
+
     const handleCreateGroup = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!groupData.organizer_name.trim()) {
+            alert('Nome do organizador é obrigatório.');
+            return;
+        }
+
+        if (!validatePhone(groupData.organizer_phone)) {
+            alert('WhatsApp do organizador inválido.');
+            return;
+        }
+
         setIsLoading(true);
         try {
             const group = await createGroup(groupData);
@@ -56,11 +101,22 @@ export default function CreateGroupForm() {
             return;
         }
 
+        // Check for duplicate phone
+        if (participants.some(p => p.phone === newParticipant.phone)) {
+            setParticipantError('Este WhatsApp já foi adicionado');
+            return;
+        }
+
         setParticipants([...participants, newParticipant]);
         setNewParticipant({ name: '', phone: '' });
     };
 
     const removeParticipant = (index: number) => {
+        const participant = participants[index];
+        // If removing organizer, uncheck the toggle
+        if (participant.phone === groupData.organizer_phone) {
+            setOrganizerParticipates(false);
+        }
         setParticipants(participants.filter((_, i) => i !== index));
     };
 
@@ -102,6 +158,10 @@ export default function CreateGroupForm() {
         const link = `${window.location.origin}/access`;
         navigator.clipboard.writeText(`Acesse seu amigo secreto: ${link} \nCódigo do grupo: ${createdGroup?.code}`);
         alert('Link copiado!');
+    };
+
+    const isOrganizerParticipant = (phone?: string) => {
+        return phone === groupData.organizer_phone;
     };
 
     return (
@@ -151,6 +211,33 @@ export default function CreateGroupForm() {
                             onChange={e => setGroupData({ ...groupData, event_date: e.target.value })}
                             className="transition-all focus:scale-[1.01]"
                         />
+
+                        <div className="border-t border-border pt-6 mt-2">
+                            <h3 className="text-lg font-semibold text-primary mb-4">👤 Dados do Organizador</h3>
+                            <div className="flex flex-col gap-4">
+                                <Input
+                                    label="Seu Nome"
+                                    placeholder="Ex: João Silva"
+                                    value={groupData.organizer_name}
+                                    onChange={e => setGroupData({ ...groupData, organizer_name: e.target.value })}
+                                    required
+                                    className="transition-all focus:scale-[1.01]"
+                                />
+                                <Input
+                                    label="Seu WhatsApp"
+                                    placeholder="(00) 00000-0000"
+                                    value={groupData.organizer_phone}
+                                    onChange={e => setGroupData({ ...groupData, organizer_phone: maskPhone(e.target.value) })}
+                                    maxLength={15}
+                                    required
+                                    className="transition-all focus:scale-[1.01]"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-3">
+                                Você receberá o link de administração do grupo por WhatsApp.
+                            </p>
+                        </div>
+
                         <Button type="submit" fullWidth isLoading={isLoading} className="mt-2">
                             Próximo: Adicionar Participantes
                         </Button>
@@ -161,14 +248,44 @@ export default function CreateGroupForm() {
                     <div className="flex flex-col gap-6 animate-slide-in">
                         <h2 className="text-xl font-bold text-primary">Participantes ({participants.length})</h2>
 
+                        {/* Organizer participation toggle */}
+                        <label className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={organizerParticipates}
+                                onChange={(e) => handleOrganizerParticipateToggle(e.target.checked)}
+                                className="w-5 h-5 accent-primary"
+                            />
+                            <div>
+                                <p className="font-medium text-blue-900">Eu também sou participante</p>
+                                <p className="text-sm text-blue-700">
+                                    {groupData.organizer_name} participará do sorteio
+                                </p>
+                            </div>
+                        </label>
+
                         <div className="flex flex-col gap-3 mb-6">
                             {participants.map((p, i) => (
-                                <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-md border border-border animate-pop-in">
-                                    <div>
+                                <div key={i} className={`flex justify-between items-center p-3 rounded-md border animate-pop-in ${isOrganizerParticipant(p.phone)
+                                        ? 'bg-blue-50 border-blue-200'
+                                        : 'bg-gray-50 border-border'
+                                    }`}>
+                                    <div className="flex items-center gap-2">
                                         <strong>{p.name}</strong>
+                                        {isOrganizerParticipant(p.phone) && (
+                                            <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
+                                                Organizador
+                                            </span>
+                                        )}
                                         {p.phone && <span className="ml-2 text-gray-500">{p.phone}</span>}
                                     </div>
-                                    <button type="button" onClick={() => removeParticipant(i)} className="text-red-500 hover:text-red-700 text-xl p-1 transition-colors">×</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeParticipant(i)}
+                                        className="text-red-500 hover:text-red-700 text-xl p-1 transition-colors"
+                                    >
+                                        ×
+                                    </button>
                                 </div>
                             ))}
                             {participants.length === 0 && (
@@ -214,6 +331,9 @@ export default function CreateGroupForm() {
                                 <strong>Grupo:</strong> <span>{createdGroup?.name}</span>
                             </div>
                             <div className="flex justify-between mb-2">
+                                <strong>Organizador:</strong> <span>{groupData.organizer_name}</span>
+                            </div>
+                            <div className="flex justify-between mb-2">
                                 <strong>Participantes:</strong> <span>{participants.length}</span>
                             </div>
                             <div className="flex justify-between mb-2">
@@ -248,9 +368,19 @@ export default function CreateGroupForm() {
 
                         <div className="flex flex-col gap-3 mb-8 max-h-[300px] overflow-y-auto">
                             {createdGroup?.participants?.map((p: any) => (
-                                <div key={p.id} className="flex items-center justify-between p-3 bg-white border border-border rounded-md shadow-sm">
+                                <div key={p.id} className={`flex items-center justify-between p-3 border rounded-md shadow-sm ${isOrganizerParticipant(p.phone)
+                                        ? 'bg-blue-50 border-blue-200'
+                                        : 'bg-white border-border'
+                                    }`}>
                                     <div className="text-left">
-                                        <p className="font-bold text-text">{p.name}</p>
+                                        <p className="font-bold text-text flex items-center gap-2">
+                                            {p.name}
+                                            {isOrganizerParticipant(p.phone) && (
+                                                <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
+                                                    Organizador
+                                                </span>
+                                            )}
+                                        </p>
                                         <p className="text-xs text-text-muted">Código: <code className="bg-gray-100 px-1 rounded">{p.access_code}</code></p>
                                     </div>
                                     <span className="text-green-600 text-sm">✓ Notificado</span>

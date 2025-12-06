@@ -23,6 +23,7 @@ export async function createGroup(data: CreateGroupInput) {
             name: data.name,
             suggested_value: data.suggested_value ? parseFloat(data.suggested_value) : null,
             event_date: data.event_date || null,
+            organizer_name: data.organizer_name,
             organizer_phone: data.organizer_phone,
             code: code
         })
@@ -60,7 +61,7 @@ export async function addParticipants(groupId: string, participants: AddParticip
 
 export async function executeDraw(groupId: string) {
     // Import Evolution API dynamically to avoid client-side issues
-    const { sendBulkWhatsAppMessages, checkEvolutionApiStatus } = await import('@/lib/evolution-api');
+    const { sendBulkWhatsAppMessages, sendWhatsAppMessage, checkEvolutionApiStatus } = await import('@/lib/evolution-api');
 
     // 1. Fetch participants
     const { data: participants, error: fetchError } = await supabase
@@ -76,10 +77,10 @@ export async function executeDraw(groupId: string) {
         throw new Error('Need at least 2 participants to draw');
     }
 
-    // 2. Fetch group info for the message
+    // 2. Fetch group info for the message (including organizer info)
     const { data: group } = await supabase
         .from('groups')
-        .select('name, code')
+        .select('name, code, organizer_name, organizer_phone')
         .eq('id', groupId)
         .single();
 
@@ -106,7 +107,10 @@ export async function executeDraw(groupId: string) {
     let notificationResult = { sent: 0, failed: 0, errors: [] as string[] };
 
     const isApiAvailable = await checkEvolutionApiStatus();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
     if (isApiAvailable && group) {
+        // Send participant notifications with link AND code
         const messages = participants.map(p => ({
             phone: p.phone || '',
             message: `Olá ${p.name}! 🎄
@@ -114,13 +118,38 @@ export async function executeDraw(groupId: string) {
 Você está participando do Amigo Secreto "${group.name}"!
 
 Clique no link abaixo para descobrir quem você tirou:
-👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/p/${p.access_code}
+👉 ${baseUrl}/p/${p.access_code}
 
+Seu código de acesso: *${p.access_code}*
 Este link é pessoal e intransferível. Não compartilhe com ninguém! 🤫`
         })).filter(m => m.phone);
 
         notificationResult = await sendBulkWhatsAppMessages(messages);
         console.log('WhatsApp notifications sent:', notificationResult);
+
+        // 7. Send admin notification to organizer
+        if (group.organizer_phone) {
+            const adminMessage = `📊 ${group.organizer_name || 'Organizador'}, o sorteio foi realizado! 🎉
+
+O Amigo Secreto "${group.name}" foi sorteado com sucesso!
+
+📋 Acesse o painel de administração:
+👉 ${baseUrl}/admin/${group.code}
+
+Código do grupo: *${group.code}*
+
+Use o link acima para acompanhar quem já viu o resultado e reenviar notificações se necessário.`;
+
+            try {
+                await sendWhatsAppMessage({
+                    phone: group.organizer_phone,
+                    message: adminMessage
+                });
+                console.log('Admin notification sent to organizer:', group.organizer_name);
+            } catch (error) {
+                console.error('Failed to send admin notification:', error);
+            }
+        }
     }
 
     return {
@@ -294,10 +323,17 @@ export async function getGroupAdmin(groupCode: string) {
         return null;
     }
 
-    // Fetch participants (without revealing who they drew)
+    // Fetch participants with their wishes (to show who filled wishlist)
     const { data: participants, error: participantsError } = await supabase
         .from('participants')
-        .select('id, name, phone, access_code, has_viewed_result')
+        .select(`
+            id, 
+            name, 
+            phone, 
+            access_code, 
+            has_viewed_result,
+            wishes (id)
+        `)
         .eq('group_id', group.id)
         .order('name');
 
@@ -306,9 +342,16 @@ export async function getGroupAdmin(groupCode: string) {
         return null;
     }
 
+    // Transform wishes array to has_wishlist boolean
+    const participantsWithWishlistStatus = participants?.map(p => ({
+        ...p,
+        has_wishlist: Array.isArray(p.wishes) && p.wishes.length > 0,
+        wishes: undefined // Remove the wishes array itself
+    })) || [];
+
     return {
         ...group,
-        participants: participants || []
+        participants: participantsWithWishlistStatus
     };
 }
 

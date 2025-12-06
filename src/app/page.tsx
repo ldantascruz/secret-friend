@@ -19,7 +19,7 @@ export default function Home() {
                     <Link href="/create" className="block transform transition-all hover:scale-105 active:scale-95">
                         <div className="bg-gradient-to-r from-primary to-secondary text-white p-6 rounded-2xl shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all">
                             <div className="text-3xl mb-2">✨</div>
-                            <h2 className="text-xl font-bold mb-1 text-white">Criar Novo Sorteio</h2>
+                            <h2 className="text-xl font-bold mb-1 !text-white">Criar Novo Sorteio</h2>
                             <p className="text-sm opacity-90">Comece agora, é grátis!</p>
                         </div>
                     </Link>

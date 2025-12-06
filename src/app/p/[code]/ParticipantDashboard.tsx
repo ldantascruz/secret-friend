@@ -19,6 +19,12 @@ export default function ParticipantDashboard({ participant }: Props) {
         participant.wishes?.map((w: any) => w.description) || ['', '', '']
     );
     const [isSaving, setIsSaving] = useState(false);
+    const [isEditing, setIsEditing] = useState(
+        !participant.wishes || participant.wishes.length === 0
+    );
+    const [isSaved, setIsSaved] = useState(
+        participant.wishes && participant.wishes.length > 0
+    );
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Show modal after 8 seconds of viewing the result (only once)
@@ -51,12 +57,12 @@ export default function ParticipantDashboard({ participant }: Props) {
         setIsSaving(true);
         try {
             await updateWishes(participant.id, wishes);
+            setIsSaved(true);
+            setIsEditing(false);
             // Show Pix modal after saving wishes as a thank-you moment
             if (!hasShownPixModal) {
                 setShowPixModal(true);
                 setHasShownPixModal(true);
-            } else {
-                alert('Lista de desejos salva!');
             }
         } catch (error) {
             alert('Erro ao salvar lista de desejos.');
@@ -75,6 +81,9 @@ export default function ParticipantDashboard({ participant }: Props) {
     const drawnPerson = Array.isArray(participant.drawn_person)
         ? participant.drawn_person[0]
         : participant.drawn_person;
+
+    const drawnPersonHasWishes = drawnPerson?.wishes && drawnPerson.wishes.length > 0;
+    const myFilledWishes = wishes.filter(w => w.trim() !== '');
 
     return (
         <>
@@ -109,7 +118,8 @@ export default function ParticipantDashboard({ participant }: Props) {
                             <p className="text-text-muted">Você tirou:</p>
                             <div className="text-5xl font-extrabold text-primary my-6 drop-shadow-sm">{drawnPerson?.name}</div>
 
-                            {drawnPerson?.wishes && drawnPerson.wishes.length > 0 ? (
+                            {/* Status da lista de desejos da pessoa que tirou */}
+                            {drawnPersonHasWishes ? (
                                 <div className="mt-8 text-left bg-white/50 p-4 rounded-lg">
                                     <h3 className="text-base font-bold mb-3 text-secondary flex items-center gap-2">
                                         <span>💡</span> Sugestões de presente:
@@ -123,9 +133,17 @@ export default function ParticipantDashboard({ participant }: Props) {
                                     </ul>
                                 </div>
                             ) : (
-                                <p className="mt-4 text-gray-500 italic bg-gray-50 p-4 rounded-md">
-                                    {drawnPerson?.name} ainda não cadastrou sugestões de presente.
-                                </p>
+                                <div className="mt-4 bg-orange-50 border border-orange-200 p-4 rounded-lg">
+                                    <div className="flex items-center justify-center gap-2 text-orange-600">
+                                        <span className="text-xl">⏳</span>
+                                        <p className="font-medium">
+                                            {drawnPerson?.name} ainda não cadastrou sugestões de presente.
+                                        </p>
+                                    </div>
+                                    <p className="text-sm text-orange-500 mt-2">
+                                        Você receberá uma notificação no WhatsApp quando a lista for atualizada!
+                                    </p>
+                                </div>
                             )}
 
                             {/* Pix Donation Button */}
@@ -140,25 +158,62 @@ export default function ParticipantDashboard({ participant }: Props) {
                 </Card>
 
                 <Card className="mt-8 animate-fade-in-up [animation-delay:200ms] opacity-0">
-                    <h2 className="text-xl font-bold mb-4">Sua Lista de Desejos</h2>
-                    <p className="mb-6 text-sm text-gray-500">
-                        Ajude seu amigo secreto! Diga o que você gostaria de ganhar.
-                    </p>
-
-                    <div className="flex flex-col gap-4">
-                        {wishes.map((wish, i) => (
-                            <Input
-                                key={i}
-                                placeholder={`Opção ${i + 1}`}
-                                value={wish}
-                                onChange={(e) => updateWish(i, e.target.value)}
-                            />
-                        ))}
-
-                        <Button onClick={handleSaveWishes} isLoading={isSaving} variant="secondary">
-                            Salvar Minhas Sugestões
-                        </Button>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold">Sua Lista de Desejos</h2>
+                        {isSaved && !isEditing && (
+                            <span className="inline-flex items-center gap-1 text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                                ✓ Salvo
+                            </span>
+                        )}
                     </div>
+
+                    {isEditing ? (
+                        <>
+                            <p className="mb-6 text-sm text-gray-500">
+                                Ajude seu amigo secreto! Diga o que você gostaria de ganhar.
+                            </p>
+                            <div className="flex flex-col gap-4">
+                                {wishes.map((wish, i) => (
+                                    <Input
+                                        key={i}
+                                        placeholder={`Opção ${i + 1}`}
+                                        value={wish}
+                                        onChange={(e) => updateWish(i, e.target.value)}
+                                    />
+                                ))}
+                                <Button onClick={handleSaveWishes} isLoading={isSaving} variant="secondary">
+                                    Salvar Minhas Sugestões
+                                </Button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {myFilledWishes.length > 0 ? (
+                                <div className="flex flex-col gap-3 mb-6">
+                                    {myFilledWishes.map((wish, i) => (
+                                        <div
+                                            key={i}
+                                            className="bg-gray-50 p-3 rounded-md border border-border/50 text-left flex items-center gap-2"
+                                        >
+                                            <span className="text-secondary">🎁</span>
+                                            {wish}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="mb-6 text-sm text-gray-500 italic">
+                                    Você ainda não cadastrou nenhuma sugestão.
+                                </p>
+                            )}
+                            <Button
+                                onClick={() => setIsEditing(true)}
+                                variant="secondary"
+                                fullWidth
+                            >
+                                ✏️ Editar Lista de Desejos
+                            </Button>
+                        </>
+                    )}
                 </Card>
             </div>
         </>
