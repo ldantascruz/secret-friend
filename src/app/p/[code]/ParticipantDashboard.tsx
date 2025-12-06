@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -14,17 +14,34 @@ interface Props {
 export default function ParticipantDashboard({ participant }: Props) {
     const [isRevealed, setIsRevealed] = useState(participant.has_viewed_result);
     const [showPixModal, setShowPixModal] = useState(false);
+    const [hasShownPixModal, setHasShownPixModal] = useState(false);
     const [wishes, setWishes] = useState<string[]>(
         participant.wishes?.map((w: any) => w.description) || ['', '', '']
     );
     const [isSaving, setIsSaving] = useState(false);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Show modal after 8 seconds of viewing the result (only once)
+    useEffect(() => {
+        if (isRevealed && !hasShownPixModal && !participant.has_viewed_result) {
+            timerRef.current = setTimeout(() => {
+                setShowPixModal(true);
+                setHasShownPixModal(true);
+            }, 8000); // 8 seconds delay
+        }
+
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+        };
+    }, [isRevealed, hasShownPixModal, participant.has_viewed_result]);
 
     // Ensure 3 slots
     while (wishes.length < 3) wishes.push('');
 
     const handleReveal = async () => {
         setIsRevealed(true);
-        setShowPixModal(true); // Show Pix modal after reveal
         if (!participant.has_viewed_result) {
             await markAsViewed(participant.id);
         }
@@ -34,7 +51,13 @@ export default function ParticipantDashboard({ participant }: Props) {
         setIsSaving(true);
         try {
             await updateWishes(participant.id, wishes);
-            alert('Lista de desejos salva!');
+            // Show Pix modal after saving wishes as a thank-you moment
+            if (!hasShownPixModal) {
+                setShowPixModal(true);
+                setHasShownPixModal(true);
+            } else {
+                alert('Lista de desejos salva!');
+            }
         } catch (error) {
             alert('Erro ao salvar lista de desejos.');
         } finally {
@@ -110,7 +133,7 @@ export default function ParticipantDashboard({ participant }: Props) {
                                 onClick={() => setShowPixModal(true)}
                                 className="mt-6 inline-flex items-center gap-2 text-sm text-secondary hover:text-primary transition-colors bg-secondary/10 hover:bg-secondary/20 px-4 py-2 rounded-full"
                             >
-                                ☕ Gostou? Pague um café!
+                                ☕ Gostou? Pague um café para a nossa equipe!
                             </button>
                         </div>
                     )}
