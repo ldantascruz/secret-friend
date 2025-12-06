@@ -2,7 +2,7 @@
 // Documentation: https://doc.evolution-api.com/
 
 // Remove trailing slashes and ensure clean base URL
-const rawUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+const rawUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8081';
 const EVOLUTION_API_URL = rawUrl.replace(/\/+$/, ''); // Remove trailing slashes
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'main';
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
