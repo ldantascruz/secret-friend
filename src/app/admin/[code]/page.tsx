@@ -2,6 +2,10 @@ import { getGroupAdmin } from '@/app/actions';
 import AdminDashboard from '@/app/admin/[code]/AdminDashboard';
 import { redirect } from 'next/navigation';
 
+// Disable caching - always fetch fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function AdminPage({ params }: { params: { code: string } }) {
     const group = await getGroupAdmin(params.code);
 

@@ -101,12 +101,6 @@ export default function CreateGroupForm() {
             return;
         }
 
-        // Check for duplicate phone
-        if (participants.some(p => p.phone === newParticipant.phone)) {
-            setParticipantError('Este WhatsApp já foi adicionado');
-            return;
-        }
-
         setParticipants([...participants, newParticipant]);
         setNewParticipant({ name: '', phone: '' });
     };
@@ -118,6 +112,70 @@ export default function CreateGroupForm() {
             setOrganizerParticipates(false);
         }
         setParticipants(participants.filter((_, i) => i !== index));
+    };
+
+    const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target?.result as string;
+            const lines = text.split('\n').filter(line => line.trim());
+
+            const newParticipants: AddParticipantInput[] = [];
+            let skippedCount = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // Skip header row if it looks like one
+                if (i === 0 && (line.toLowerCase().includes('nome') || line.toLowerCase().includes('name'))) {
+                    continue;
+                }
+
+                // Try different separators: comma, semicolon, tab
+                let parts: string[] = [];
+                if (line.includes(';')) {
+                    parts = line.split(';').map(p => p.trim());
+                } else if (line.includes('\t')) {
+                    parts = line.split('\t').map(p => p.trim());
+                } else {
+                    parts = line.split(',').map(p => p.trim());
+                }
+
+                const name = parts[0]?.replace(/["']/g, '').trim();
+                let phone = parts[1]?.replace(/["']/g, '').trim() || '';
+
+                if (name) {
+                    // Apply phone mask if phone exists
+                    if (phone) {
+                        phone = maskPhone(phone);
+                    }
+
+                    // Only add if has valid phone
+                    if (validatePhone(phone)) {
+                        newParticipants.push({ name, phone });
+                    } else {
+                        skippedCount++;
+                    }
+                }
+            }
+
+            if (newParticipants.length > 0) {
+                setParticipants([...participants, ...newParticipants]);
+                setParticipantError('');
+                alert(`${newParticipants.length} participantes importados!${skippedCount > 0 ? ` (${skippedCount} ignorados por WhatsApp inválido)` : ''}`);
+            } else {
+                alert('Nenhum participante válido encontrado no arquivo. Verifique o formato: Nome, WhatsApp');
+            }
+
+            // Reset file input
+            e.target.value = '';
+        };
+
+        reader.readAsText(file);
     };
 
     const handleSaveParticipants = async () => {
@@ -267,8 +325,8 @@ export default function CreateGroupForm() {
                         <div className="flex flex-col gap-3 mb-6">
                             {participants.map((p, i) => (
                                 <div key={i} className={`flex justify-between items-center p-3 rounded-md border animate-pop-in ${isOrganizerParticipant(p.phone)
-                                        ? 'bg-blue-50 border-blue-200'
-                                        : 'bg-gray-50 border-border'
+                                    ? 'bg-blue-50 border-blue-200'
+                                    : 'bg-gray-50 border-border'
                                     }`}>
                                     <div className="flex items-center gap-2">
                                         <strong>{p.name}</strong>
@@ -316,6 +374,27 @@ export default function CreateGroupForm() {
                             </div>
                             {participantError && <p className="text-red-500 text-sm">{participantError}</p>}
                         </form>
+
+                        {/* CSV Import */}
+                        <div className="border-t border-border pt-4 mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm text-gray-600">Ou importe de um arquivo:</span>
+                                <label className="cursor-pointer">
+                                    <input
+                                        type="file"
+                                        accept=".csv,.txt"
+                                        onChange={handleCSVImport}
+                                        className="hidden"
+                                    />
+                                    <span className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                        📄 Importar CSV
+                                    </span>
+                                </label>
+                            </div>
+                            <p className="text-xs text-gray-400">
+                                Formato: Nome, WhatsApp (uma pessoa por linha)
+                            </p>
+                        </div>
 
                         <Button onClick={handleSaveParticipants} fullWidth isLoading={isLoading} disabled={participants.length < 2}>
                             Próximo: Revisar e Sortear
@@ -369,8 +448,8 @@ export default function CreateGroupForm() {
                         <div className="flex flex-col gap-3 mb-8 max-h-[300px] overflow-y-auto">
                             {createdGroup?.participants?.map((p: any) => (
                                 <div key={p.id} className={`flex items-center justify-between p-3 border rounded-md shadow-sm ${isOrganizerParticipant(p.phone)
-                                        ? 'bg-blue-50 border-blue-200'
-                                        : 'bg-white border-border'
+                                    ? 'bg-blue-50 border-blue-200'
+                                    : 'bg-white border-border'
                                     }`}>
                                     <div className="text-left">
                                         <p className="font-bold text-text flex items-center gap-2">
