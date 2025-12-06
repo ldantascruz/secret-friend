@@ -114,7 +114,7 @@ export async function executeDraw(groupId: string) {
 Você está participando do Amigo Secreto "${group.name}"!
 
 Clique no link abaixo para descobrir quem você tirou:
-👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access/p/${p.access_code}
+👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/p/${p.access_code}
 
 Este link é pessoal e intransferível. Não compartilhe com ninguém! 🤫`
         })).filter(m => m.phone);
@@ -280,7 +280,7 @@ export async function sendNotificationToParticipant(
 Você está participando do Amigo Secreto "${groupName}"!
 
 Clique no link abaixo para descobrir quem você tirou:
-👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access/p/${participant.access_code}
+👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/p/${participant.access_code}
 
 Este link é pessoal e intransferível. Não compartilhe com ninguém! 🤫`;
 
@@ -326,7 +326,7 @@ export async function sendNotificationsToAllParticipants(groupCode: string) {
 Você está participando do Amigo Secreto "${group.name}"!
 
 Clique no link abaixo para descobrir quem você tirou:
-👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access/p/${p.access_code}
+👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/p/${p.access_code}
 
 Este link é pessoal e intransferível. Não compartilhe com ninguém! 🤫`
         }));
