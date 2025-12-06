@@ -283,9 +283,9 @@ export async function updateWishes(participantId: string, wishes: string[]) {
 
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-        const message = `🎁 Boa notícia, ${whoDrawMe.name}!
+        const message = `🎁 Olá ${whoDrawMe.name}!
 
-${thisParticipant.name} acabou de atualizar a lista de desejos no Amigo Secreto "${groupName}"!
+Seu amigo secreto acabou de atualizar a lista de desejos no grupo "${groupName}"!
 
 Acesse o link para ver as sugestões:
 👉 ${baseUrl}/p/${whoDrawMe.access_code}
@@ -297,7 +297,7 @@ Agora ficou mais fácil escolher o presente! 🎄`;
             message
         });
 
-        console.log(`Wishlist notification sent to ${whoDrawMe.name} about ${thisParticipant.name}'s updated wishlist`);
+        console.log(`Wishlist notification sent to ${whoDrawMe.name}`);
     } catch (error) {
         // Don't fail the wish update if notification fails
         console.error('Failed to send wishlist update notification:', error);
