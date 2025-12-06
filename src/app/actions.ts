@@ -113,12 +113,10 @@ export async function executeDraw(groupId: string) {
 
 Você está participando do Amigo Secreto "${group.name}"!
 
-Seu código de acesso pessoal é: *${p.access_code}*
+Clique no link abaixo para descobrir quem você tirou:
+👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access/p/${p.access_code}
 
-Acesse o link abaixo e digite seu código para descobrir quem você tirou:
-👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access
-
-Não compartilhe seu código com ninguém! 🤫`
+Este link é pessoal e intransferível. Não compartilhe com ninguém! 🤫`
         })).filter(m => m.phone);
 
         notificationResult = await sendBulkWhatsAppMessages(messages);
@@ -281,12 +279,10 @@ export async function sendNotificationToParticipant(
 
 Você está participando do Amigo Secreto "${groupName}"!
 
-Seu código de acesso pessoal é: *${participant.access_code}*
+Clique no link abaixo para descobrir quem você tirou:
+👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access/p/${participant.access_code}
 
-Acesse o link abaixo e digite seu código para descobrir quem você tirou:
-👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access
-
-Não compartilhe seu código com ninguém! 🤫`;
+Este link é pessoal e intransferível. Não compartilhe com ninguém! 🤫`;
 
     const result = await sendWhatsAppMessage({
         phone: participant.phone,
@@ -329,12 +325,10 @@ export async function sendNotificationsToAllParticipants(groupCode: string) {
 
 Você está participando do Amigo Secreto "${group.name}"!
 
-Seu código de acesso pessoal é: *${p.access_code}*
+Clique no link abaixo para descobrir quem você tirou:
+👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access/p/${p.access_code}
 
-Acesse o link abaixo e digite seu código para descobrir quem você tirou:
-👉 ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/access
-
-Não compartilhe seu código com ninguém! 🤫`
+Este link é pessoal e intransferível. Não compartilhe com ninguém! 🤫`
         }));
 
     const result = await sendBulkWhatsAppMessages(messages);
